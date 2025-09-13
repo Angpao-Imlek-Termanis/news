@@ -1,0 +1,49 @@
+<?php
+// ====== KONFIGURASI ======
+$txtFile = "list.txt"; // Nama file list
+$templateFile = "index.php"; // Template isi index.php
+$baseDir = __DIR__; // Folder kerja, bisa diubah
+
+// ====== CEK FILE ======
+if (!file_exists($txtFile)) {
+    die("File $txtFile tidak ditemukan.");
+}
+if (!file_exists($templateFile)) {
+    die("Template $templateFile tidak ditemukan.");
+}
+
+// ====== BACA DAFTAR KEYWORDS ======
+$keywords = file($txtFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+// ====== MULAI GENERASI FOLDER ======
+foreach ($keywords as $slugRaw) {
+    $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim($slugRaw)));
+    if ($slug === '') continue;
+
+    $folder = $baseDir . '/' . $slug;
+    $targetFile = $folder . '/index.php';
+
+    // Buat folder jika belum ada
+    if (!is_dir($folder)) {
+        mkdir($folder, 0755, true);
+        echo "Folder dibuat: $folder\n";
+    }
+
+    // Baca isi template dan ganti placeholder
+    $template = file_get_contents($templateFile);
+    $title = ucwords(str_replace('-', ' ', $slug));
+    $desc = "$title Online education for Horus University Engineering Students. the system will support student by lectures, sections and quizzes.";
+    $link = "https://hue-engineering.com/$slug";
+
+    $output = str_replace(
+        ['{{TITLE}}', '{{DESCRIPTION}}', '{{LINK}}'],
+        [$title, $desc, $link],
+        $template
+    );
+
+    // Tulis index.php ke folder
+    file_put_contents($targetFile, $output);
+    echo "Landing page dibuat: $targetFile\n";
+}
+
+echo "✅ Semua folder selesai dibuat.\n";
